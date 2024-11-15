@@ -16,23 +16,45 @@ private val json = Json {
 fun buildModTree(folder: File): ModTree =
     if (folder.listFiles { file: File -> file.isFile && file.name == "manifest.json" }!!.any()) {
         val file = File(folder, "manifest.json")
-        json.decodeFromString<Manifest>(Files.readString(Path(file.absolutePath)).trimStart('\uFEFF')).toMod(file)
+        json.decodeFromString<Manifest>(Files.readString(Path(file.absolutePath)).trimStart('\uFEFF')).toMod(folder)
     } else {
-        ModCategory(folder, folder.listFiles()!!.map { buildModTree(it) })
+        ModCategory(
+            file = folder,
+            name = folder.name.trimStart('.'),
+            enabled = !folder.name.startsWith('.'),
+            subMods = folder.listFiles()!!.map { buildModTree(it) }
+                .groupBy {
+                    if (it is ModCategory) {
+                        "Category"
+                    } else {
+                        "Mod"
+                    }
+                }.mapValues { (_, value) -> value.sortedBy { it.name } }.let {
+                    listOf(
+                        *it["Category"]?.toTypedArray() ?: arrayOf(),
+                        *it["Mod"]?.toTypedArray() ?: arrayOf()
+                    )
+                }
+        )
     }
 
 abstract class ModTree(
-    val file: File
+    val file: File,
+    val name: String,
+    val enabled: Boolean,
 )
 
 class ModCategory(
     file: File,
-    val subFiles: List<ModTree>
-) : ModTree(file)
+    name: String,
+    enabled: Boolean,
+    val subMods: List<ModTree>
+) : ModTree(file, name, enabled)
 
 abstract class Mod(
     file: File,
-    val name: String,
+    name: String,
+    enabled: Boolean,
     val description: String,
     val author: String,
     val version: String,
@@ -41,11 +63,12 @@ abstract class Mod(
     val uniqueID: String,
     val dependencies: List<Dependency>,
     val updateKeys: List<String>
-) : ModTree(file)
+) : ModTree(file, name, enabled)
 
 class SMAPIMod(
     file: File,
     name: String,
+    enabled: Boolean,
     description: String,
     author: String,
     version: String,
@@ -55,11 +78,12 @@ class SMAPIMod(
     val entryDll: String,
     dependencies: List<Dependency>,
     updateKeys: List<String>
-) : Mod(file, name, description, author, version, minimumApiVersion, minimumGameVersion, uniqueID, dependencies, updateKeys)
+) : Mod(file, name, enabled, description, author, version, minimumApiVersion, minimumGameVersion, uniqueID, dependencies, updateKeys)
 
 class ContentPackMod(
     file: File,
     name: String,
+    enabled: Boolean,
     description: String,
     author: String,
     version: String,
@@ -69,7 +93,7 @@ class ContentPackMod(
     val contentPackFor: ContentPackDependency,
     dependencies: List<Dependency>,
     updateKeys: List<String>
-) : Mod(file, name, description, author, version, minimumApiVersion, minimumGameVersion, uniqueID, dependencies, updateKeys)
+) : Mod(file, name, enabled, description, author, version, minimumApiVersion, minimumGameVersion, uniqueID, dependencies, updateKeys)
 
 @Serializable
 data class Manifest(
@@ -101,6 +125,7 @@ data class Manifest(
             return SMAPIMod(
                 file = file,
                 name = name,
+                enabled = !file.name.startsWith('.'),
                 description = description,
                 author = author,
                 version = version,
@@ -116,6 +141,7 @@ data class Manifest(
             return ContentPackMod(
                 file = file,
                 name = name,
+                enabled = !file.name.startsWith('.'),
                 description = description,
                 author = author,
                 version = version,

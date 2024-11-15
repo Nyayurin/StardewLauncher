@@ -3,6 +3,7 @@ package cn.yurin.stardewlauncher.theme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 private val lightScheme =
     lightColorScheme(
@@ -150,6 +152,7 @@ fun Theme(
     ) {
         Surface(
             color = MaterialTheme.colorScheme.background,
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
             content()
